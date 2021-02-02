@@ -119,6 +119,7 @@ async function vercelDeploy(ref, commit) {
       ...(workingDirectory ? { cwd: workingDirectory } : {}),
       listeners: {
         stdout: data => {
+<<<<<<< HEAD
           core.info('waitForDeploy: ' + waitForDeploy);
           if (!waitForDeploy && data.toString().includes('https://')) {
             core.info('Skipping deploy...');
@@ -130,6 +131,13 @@ async function vercelDeploy(ref, commit) {
         },
         stderr: data => {
           core.info(data.toString());
+=======
+          // core.info(data.toString());
+          res(data.toString());
+        },
+        stderr: data => {
+          // core.info(data.toString());
+>>>>>>> feat: add wait-for-deploy flag to avoid wait for deploys
         },
       },
     });
@@ -138,34 +146,34 @@ async function vercelDeploy(ref, commit) {
 
 async function vercelInspect(deploymentUrl) {
   // eslint-disable-next-line no-unused-vars
-  let myOutput = '';
-  let myError = '';
-  const options = {};
-  options.listeners = {
-    stdout: data => {
-      // eslint-disable-next-line no-unused-vars
-      myOutput += data.toString();
-      core.info(data.toString());
-    },
-    stderr: data => {
-      myError += data.toString();
-      core.info(data.toString());
-    },
-  };
-  if (workingDirectory) {
-    options.cwd = workingDirectory;
-  }
-
   const args = ['vercel', 'inspect', deploymentUrl, '-t', vercelToken];
 
   if (vercelScope) {
     core.info('using scope');
     args.push('--scope', vercelScope);
   }
-  await exec.exec('npx', args, options);
 
-  const match = myError.match(/^\s+name\s+(.+)$/m);
-  return match && match.length ? match[1] : null;
+  return new Promise(res => {
+    exec.exec('npx', args, {
+      ...(workingDirectory ? { cwd: workingDirectory } : {}),
+      listeners: {
+        stdout: data => {
+          res(data.toString());
+          // core.info(data.toString());
+          // core.info('myInspect: ' + data.toString());
+        },
+        stderr: data => {
+          const myError = data.toString();
+          const match = myError.match(/^\s+name\s+(.+)$/m);
+          if (myError.match(/^\s+name\s+(.+)$/m)) {
+            // core.info('myError found name: ' + myError);
+            res(match && match.length ? match[1] : null);
+          }
+          core.info(data.toString());
+        },
+      },
+    });
+  });
 }
 
 async function findCommentsForEvent() {
@@ -194,10 +202,10 @@ async function findPreviousComment(text) {
   }
   core.info('find comment');
   const { data: comments } = await findCommentsForEvent();
+  const vercelPreviewURLComment = comments.find(comment => {
+    return comment.body.startsWith(text);
+  });
 
-  const vercelPreviewURLComment = comments.find(comment =>
-    comment.body.startsWith(text),
-  );
   if (vercelPreviewURLComment) {
     core.info('previous comment found');
     return vercelPreviewURLComment.id;
@@ -243,6 +251,7 @@ async function createCommentOnCommit(
   deploymentUrl,
   deploymentName,
 ) {
+  core.info('createCommentOnCommit');
   if (!octokit) {
     return;
   }
@@ -378,8 +387,7 @@ async function run() {
   }
 
   const deploymentName =
-    vercelProjectName ||
-    (waitForDeploy && (await vercelInspect(deploymentUrl)));
+    vercelProjectName || (await vercelInspect(deploymentUrl));
 
   if (deploymentName) {
     core.info('set preview-name output');
@@ -404,6 +412,8 @@ async function run() {
   } else {
     core.info('comment : disabled');
   }
+
+  if (!waitForDeploy) process.exit(0);
 }
 
 run().catch(error => {
