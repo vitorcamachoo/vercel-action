@@ -119,25 +119,11 @@ async function vercelDeploy(ref, commit) {
       ...(workingDirectory ? { cwd: workingDirectory } : {}),
       listeners: {
         stdout: data => {
-<<<<<<< HEAD
-          core.info('waitForDeploy: ' + waitForDeploy);
-          if (!waitForDeploy && data.toString().includes('https://')) {
-            core.info('Skipping deploy...');
-            res(data.toString());
-          } else {
-            core.info('Waitting for deploy...');
-            core.info(data.toString());
-          }
-        },
-        stderr: data => {
           core.info(data.toString());
-=======
-          // core.info(data.toString());
           res(data.toString());
         },
         stderr: data => {
-          // core.info(data.toString());
->>>>>>> feat: add wait-for-deploy flag to avoid wait for deploys
+          core.info(data.toString());
         },
       },
     });
@@ -159,14 +145,12 @@ async function vercelInspect(deploymentUrl) {
       listeners: {
         stdout: data => {
           res(data.toString());
-          // core.info(data.toString());
-          // core.info('myInspect: ' + data.toString());
+          core.info(data.toString());
         },
         stderr: data => {
           const myError = data.toString();
           const match = myError.match(/^\s+name\s+(.+)$/m);
           if (myError.match(/^\s+name\s+(.+)$/m)) {
-            // core.info('myError found name: ' + myError);
             res(match && match.length ? match[1] : null);
           }
           core.info(data.toString());
